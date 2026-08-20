@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Restaurant Queue & Table PWA</title>
+    
+    <!-- PWA Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    
+    <!-- iOS Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="TableQueue">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3448/3448609.png">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen p-6 select-none">
+
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <header class="mb-6 bg-white p-6 rounded-2xl shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800">ระบบจัดการโต๊ะอาหาร (PWA)</h1>
+                <p class="text-slate-500 text-sm">Process 1: จัดการสถานะและเรียงลำดับโต๊ะ</p>
+            </div>
+            <button onclick="resetAllTables()" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-2 rounded-lg transition">
+                Reset โต๊ะทั้งหมด
+            </button>
+        </header>
+
+        <!-- Control Bar -->
+        <div class="mb-6 bg-white p-4 rounded-2xl shadow-sm flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-2">
+                <label for="sort-select" class="text-sm font-semibold text-slate-600">เรียงลำดับ:</label>
+                <select id="sort-select" onchange="handleSortChange(this.value)" class="bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-2.5 font-medium cursor-pointer">
+                    <option value="number-asc">เลขโต๊ะ (น้อย -> มาก)</option>
+                    <option value="number-desc">เลขโต๊ะ (มาก -> น้อย)</option>
+                    <option value="status-occupied">โต๊ะที่มีลูกค้า ขึ้นก่อน</option>
+                    <option value="status-available">โต๊ะที่ว่าง ขึ้นก่อน</option>
+                    <option value="capacity-desc">ความจุโต๊ะ (มาก -> น้อย)</option>
+                </select>
+            </div>
+            <div id="table-summary" class="text-xs font-semibold text-slate-500"></div>
+        </div>
+
+        <!-- Table Grid -->
+        <div id="table-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+    </div>
+
+    <script>
+        let tables = [
+            { id: 1, number: 1, label: "T-01 ใน", capacity: 4, status: "AVAILABLE", time: null },
+            { id: 1, number: 1, label: "T-01 นอก", capacity: 4, status: "AVAILABLE", time: null },
+            { id: 2, number: 2, label: "T-02 ", capacity: 4, status: "OCCUPIED", time: "18.20" },
+            { id: 2, number: 2, label: "T-02 นอก", capacity: 4, status: "AVAILABLE", time: null },
+            { id: 3, number: 3, label: "T-03 ใน", capacity: 4, status: "AVAILABLE", time: null },
+            { id: 3, number: 3, label: "T-03 นอก", capacity: 4, status: "AVAILABLE", time: null },
+            { id: 4, number: 4, label: "T-4 ใน", capacity: 4, status: "AVAILABLE", time: null },
+            { id: 4, number: 4, label: "T-4 นอก", capacity: 4, status: "AVAILABLE", time: null },
+          { id: 5, number: 5, label: "T-05 ใน", capacity: 4, status: "AVAILABLE", time: null },
+          { id: 5, number: 5, label: "T-05 นอก", capacity: 4, status: "AVAILABLE", time: null },
+          { id: 6, number: 6, label: "T-06 ใน", capacity: 4, status: "AVAILABLE", time: null },
+          { id: 6, number: 6, label: "T-06 นอก", capacity: 4, status: "AVAILABLE", time: null },
+          { id: 7, number: 7, label: "T-07 ใน", capacity: 4, status: "AVAILABLE", time: null },
+          { id: 7, number: 7, label: "T-07 นอก", capacity: 4, status: "AVAILABLE", time: null },
+          { id: 8, number: 8, label: "T-08 ใน", capacity: 4, status: "AVAILABLE", time: null },
+          { id: 8, number: 8, label: "T-08 นอก", capacity: 4, status: "AVAILABLE", time: null },
+          { id: 9, number: 9, label: "T-09 ใน", capacity: 4, status: "AVAILABLE", time: null },
+          { id: 9, number: 9, label: "T-09 นอก", capacity: 4, status: "AVAILABLE", time: null },
+          { id: 10, number: 10, label: "T-10 ใน", capacity: 4, status: "AVAILABLE", time: null },
+          { id: 10, number: 10, label: "T-10 นอก", capacity: 4, status: "AVAILABLE", time: null }
+        ];
+
+        let currentSort = "number-asc";
+
+        function getSortedTables() {
+            let sorted = [...tables];
+            switch (currentSort) {
+                case "number-asc": return sorted.sort((a, b) => a.number - b.number);
+                case "number-desc": return sorted.sort((a, b) => b.number - a.number);
+                case "status-occupied": return sorted.sort((a, b) => (a.status === "OCCUPIED" ? -1 : 1));
+                case "status-available": return sorted.sort((a, b) => (a.status === "AVAILABLE" ? -1 : 1));
+                case "capacity-desc": return sorted.sort((a, b) => b.capacity - a.capacity);
+                default: return sorted;
+            }
+        }
+
+        function handleSortChange(sortValue) {
+            currentSort = sortValue;
+            renderTables();
+        }
+
+        function renderTables() {
+            const grid = document.getElementById('table-grid');
+            const summary = document.getElementById('table-summary');
+            grid.innerHTML = '';
+
+            const sortedTables = getSortedTables();
+            const occupiedCount = tables.filter(t => t.status === "OCCUPIED").length;
+            summary.innerHTML = `มีลูกค้า: <span class="text-red-600 font-bold">${occupiedCount}</span> / โต๊ะว่าง: <span class="text-green-600 font-bold">${tables.length - occupiedCount}</span> (รวม ${tables.length} โต๊ะ)`;
+
+            sortedTables.forEach(table => {
+                const isOccupied = table.status === "OCCUPIED";
+                const card = document.createElement('div');
+                card.className = `p-5 rounded-2xl border-2 transition-all flex flex-col justify-between h-48 ${
+                    isOccupied ? 'bg-red-50 border-red-500 text-red-900 shadow-md' : 'bg-white border-slate-200 hover:border-blue-400'
+                }`;
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <span class="text-2xl font-black">${table.label}</span>
+                        <span class="text-xs font-semibold px-2.5 py-1 rounded-full ${
+                            isOccupied ? 'bg-red-200 text-red-800' : 'bg-slate-100 text-slate-600'
+                        }">${table.capacity} ที่นั่ง</span>
+                    </div>
+                    <div class="my-auto">
+                        ${isOccupied ? `
+                            <div class="flex items-center space-x-2 text-red-600 font-bold">
+                                <span class="relative flex h-3 w-3">
+                                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                  <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                                </span>
+                                <span>มีลูกค้านั่งแล้ว</span>
+                            </div>
+                            <p class="text-xs text-red-400 mt-1">เวลา: ${table.time}</p>
+                        ` : `<p class="text-slate-400 text-sm font-medium">🟢 โต๊ะว่าง</p>`}
+                    </div>
+                    ${!isOccupied ? `
+                        <button onclick="seatCustomer(${table.id})" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-xl text-sm transition">
+                            พาลูกค้านั่งโต๊ะ
+                        </button>
+                    ` : `
+                        <button onclick="clearTable(${table.id})" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium py-1.5 rounded-xl text-xs transition">
+                            เคลียร์โต๊ะ
+                        </button>
+                    `}
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function seatCustomer(id) {
+            const table = tables.find(t => t.id === id);
+            if (table) {
+                table.status = "OCCUPIED";
+                table.time = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+                renderTables();
+            }
+        }
+
+        function clearTable(id) {
+            const table = tables.find(t => t.id === id);
+            if (table) {
+                table.status = "AVAILABLE";
+                table.time = null;
+                renderTables();
+            }
+        }
+
+        function resetAllTables() {
+            tables.forEach(t => { t.status = "AVAILABLE"; t.time = null; });
+            renderTables();
+        }
+
+        renderTables();
+
+        // Register Service Worker สำหรับ PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('PWA Service Worker Registered!'))
+                    .catch(err => console.log('Service Worker Failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>
